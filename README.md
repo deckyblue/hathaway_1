@@ -1,2 +1,4 @@
 # hathaway_1
-First Hathaway repository
+Hathaway repository 
+
+Authors: Brett Hathaway and Dexter Kim
