@@ -33,3 +33,4 @@ def load_data(fnames): ##fnames is an argument, and a list of strings (file name
     #i > 0, and fnames[i] refers to the ith element of the list, fnames
             df = df.append(df2, ignore_index = True) #append it to the first file
     return df
+
