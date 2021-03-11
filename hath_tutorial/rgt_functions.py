@@ -199,3 +199,39 @@ def get_summary_data(df_raw):
     df_sum = get_trials(df_raw,df_sum)
     df_sum = get_premature(df_raw,df_sum)
     return df_sum
+
+#---------------------------------------------------------------#
+
+def get_risk_status(df_sum, startsess, endsess):
+    #get risk status from specified sessions
+    #create lists for indexing based on risk status
+    risky = []
+    optimal = []
+    startsess = 'risk' + str(startsess)
+    endsess = 'risk' + str(endsess)
+    #calculate the mean risk score from the specified sessions
+    df_sum['mean_risk'] = df_sum.loc[:,startsess:endsess].mean(axis=1) ###did this create a 'mean_risk' column?
+    for sub in df_sum.index: #for each subject
+        if df_sum.at[sub,'mean_risk'] > 0: #if the mean risk for that subject is above zero
+            df_sum.at[sub,'risk_status'] = 1 #assign them a risk status of 1
+            optimal.append(sub) #and add them to the 'optimal' list
+        elif df_sum.at[sub,'mean_risk'] < 0: #if the mean risk for that subject is below zero
+            df_sum.at[sub,'risk_status'] = 2 #assign them a risk status of 2
+            risky.append(sub) #and append them to the 'risky' list
+    return df_sum, risky, optimal
+
+df_summary, risky, optimal = get_risk_status(df_summary, startsess, endsess) 
+
+#---------------------------------------------------------------#
+
+def export_to_excel(df,groups,groupname,filename):
+    dfs = []
+    for group in groups: #this splits the dataframe by group
+        dfs.append(df.loc[group])
+    for i,df in enumerate(dfs): #this assigns a number to the tg_status column - in this case, 0 for control, 1 for experimental
+        df[groupname] = i ##i should be 0 and 1
+    df_export = pd.concat(dfs) #this recombines the dataframes
+    df_export.sort_index(inplace = True) #this sorts the subjects so they're in the right order after combining
+    df_export.to_excel(filename, index_label = 'Subject')
+    
+    
