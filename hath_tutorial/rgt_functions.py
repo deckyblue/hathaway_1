@@ -47,5 +47,155 @@ def check_sessions(df): ##checks that the 'Session' column has correct, and non-
     print(df.groupby(['Subject','StartDate','Session'])['Trial'].max())
     pd.set_option('display.max_rows',df.Subject.max()) ##this sets the number of displayed rows to the number of subjects
     
+#---------------------------------------------------------------#
+
+def get_choices(df):
+    configA = np.array([1, 4, 0, 2, 3]) #this is the order for version A - i.e., hole 1 corresponds to P1
+    configB = np.array([4, 1, 0, 3, 2]) #this is the order for version B - i.e., hole 1 corresponds to P4
+
+    #I took the following code from someone else, so honestly I'm not entirely sure how it works haha
+    #the important thing is that it uses the configurations above to assign the correct option, 
+    #based on whether the MSN name contains 'A' or 'B'
+    df['option'] = df['MSN'].str.contains("B").values*configB[df['Chosen'].astype('int').ravel()-1].astype('int') + \
+        df['MSN'].str.contains("A").values*configA[df['Chosen'].astype('int').ravel()-1].astype('int')
     
+    ###I can just take your word for it right? haha
+    ####Yes
+
+    #the above code changes any zero in the chosen column to a three in the option column - don't need to know why
+    #so we need to fix that (zeros represent either a premature response or an omission)
+    for i in range(len(df)): ##range gives me a list from 0 to the len(df), which should be all the indices
+        if df['Chosen'][i] == 0: ###can we say this in English? 
+            ##the same as df.at
+            ##if the index of the 'Chosen' column gets 0 --> option equals 0 
+            df['option'][i] = 0 
+    return df    
+
+#---------------------------------------------------------------#
+
+def get_sum_choice(num, df): ##arguments: session number, dataframe
+    #first we create a df with only data from the given session number
+    df1 = df.loc[df['Session'] == num]
+
+###dataframe.loc accesses a group of columns/rows? ####Yes
+###if so, is df.loc accessing all rows where 'Session' gets num? ####Yes
+
+    #then we create a list of subject numbers, and sort them
+    subs = df1.Subject.unique() ##list of unique subject numbers (1-32)
+    subs.sort() ##and sort them
+    #then we create a df called percentage, which has 4 columns --> P1 to P4, leading with the session number
+    #i.e., if session number = 29, the columns will be 29P1, 29P2, 29P3, 29P4
+    percentage = pd.DataFrame(columns=[str(num) + 'P1',str(num) + 'P2',str(num) + 'P3',str(num) + 'P4'])
     
+##recall: you can add strings lol
+###does pd.DataFrame create a dataframe? ####Yes
+
+    for sub in subs: #for each subject 
+        for i,column in enumerate(percentage.columns): #for each option 
+###percentage.columns called the columns in percentage (object) --> produced enumerated list? couldn't check
+##enumerate stores 2 different lists
+##list for i [0,1,2,3] (columns)
+##list for column [29P1, 29P2, etc...]
+##first loop: i = 0, column = 29P1 
+##we would go through this loop, 4 times, for each subject. (128 times)
+
+            #this calculates the %choice (number of times that option is selected) divided by total number of choices,
+            #multiplied by 100
+            percentage.at[sub,column] = (len(df1.loc[(df1.option == i + 1) & ##P1 is 1 in the option column
+                                            (df1.Subject == sub)]))/(len(df1.loc[(df1['option'] != 0) & 
+                                                                                (df.Subject == sub)])) *100
+    return percentage
+
+#---------------------------------------------------------------#
+
+def get_sum_choice_all(df):
+    #create an empty list to store the sessions individually
+    df_sess = []
+    for num in np.sort(df['Session'].unique()): ##for each session number in list of session numbers 
+        df_sess.append(get_sum_choice(num,df)) ##append the summary info from get_sum_choice to the above list ###appending side-to-side? ####just makes a list
+    #then turn that list into a df
+    ##recall, get_sum_choice outputs a dataframe
+
+    df1 = pd.concat(df_sess, axis=1) ###appends the list of dataframes side by side
+    #let's also calculate the risk score for each session - (P1 + P2) - (P3 + P4)
+    for num in np.sort(df['Session'].unique()):
+        df1['risk'+ str(num)] = df1[str(num)+'P1'] + df1[str(num)+'P2']- df1[str(num)+'P3'] - df1[str(num)+'P4']
+        ##these are all names of columns 
+        ##df1[str(num)+'P2'] is 29P2
+    return df1
+
+#---------------------------------------------------------------#
+
+def get_premature(df_raw,df_sum):
+    #add up the number of premature responses made by (each subject for each session)--> the group
+    #save this information to a dataframe called prem_resp
+    prem_resp = df_raw.groupby(['Subject', 'Session'],as_index=False)['Premature_Resp'].sum()
+
+##prem_resp took the raw df, grouped by subject and session, and summed the premature responses --> made a df
+    
+    #calculate the number of initiated trials for each subject for each session 
+    prem_resp['Trials'] = df_raw.groupby(['Subject','Session'],as_index=False)['Trial'].count()['Trial']
+    ##makes a new column called 'Trials' which counts the # of trials initiated
+    ##'Trial' is an existing column in the raw df (in the .xlsx file)
+    ###why is there 2 'Trial'? #### just takes the trials - try a new cell 
+
+    #calculate the premature percent by dividing # of premature responses by # of trials initiated, times 100    
+    prem_resp['prem_percent'] = prem_resp['Premature_Resp']/prem_resp['Trials'] * 100
+    ###can we say this in English? easy
+
+    #add this information to the summary dataframe
+    #the column name will be 'prem' + session number - i.e., prem29 for session 29
+    for num in np.sort(df_raw['Session'].unique()): #for each session in the raw dataframe
+        #for that session, extract the prem_percent column from prem_resp and add it to the summary dataframe
+        #set the index as the subject number, so it matches the summary dataframe
+        df_sum['prem' + str(num)] = prem_resp.loc[prem_resp['Session']==num].set_index('Subject')['prem_percent']
+        ####locate session == num, set index to Subject (1-32), and call prem_percent column of prem_resp --> assign it to df_sum(yadayada)
+    return df_sum
+
+#---------------------------------------------------------------#
+
+def get_latencies(df_raw,df_sum):
+    #extract only completed trials (including non-completed trials will skew the mean, as the latency is zero for those trials)
+    df_raw = df_raw.loc[df_raw['Chosen'] != 0] ##'Chosen' = 0 indicates a prem_response or omission
+    #group by subject and session, then calculate the mean collect latency
+    collect_lat = df_raw.groupby(['Subject','Session'],as_index=False)['Collect_Lat'].mean()
+    #group by subject and session, then calculate the mean choice latency
+    choice_lat = df_raw.groupby(['Subject','Session'],as_index=False)['Choice_Lat'].mean()
+    
+    #add this information to the summary dataframe - same method as used above for premature responding
+    for num in np.sort(df_raw['Session'].unique()):
+        df_sum['collect_lat' + str(num)] = collect_lat.loc[collect_lat['Session']==num].set_index('Subject')['Collect_Lat']
+    for num in np.sort(df_raw['Session'].unique()):
+        df_sum['choice_lat' + str(num)] = choice_lat.loc[choice_lat['Session']==num].set_index('Subject')['Choice_Lat']
+        ###we're setting the index to subject, so why is ['Choice_Lat'] here?
+    return df_sum
+
+#---------------------------------------------------------------#
+
+def get_omit(df_raw,df_sum):
+    #group by subject and session and sum the 'omit' column
+    omit = df_raw.groupby(['Subject','Session'],as_index=False)['Omit'].sum() 
+##takes the raw dataframe, groups by subject and session, and takes the sum of the "Omit" column 
+    #append this information to the summary dataframe
+    for num in np.sort(df_raw['Session'].unique()): #gets all unique numbers in the session column
+        df_sum['omit' + str(num)] = omit.loc[omit['Session']==num].set_index('Subject')['Omit']
+    return df_sum
+
+def get_trials(df_raw,df_sum):
+    #group by subject and session and get the max number in the trial column
+    trials = df_raw.groupby(['Subject','Session'],as_index=False)['Trial'].max()
+    #append this information to the summary dataframe
+    for num in np.sort(df_raw['Session'].unique()):
+        df_sum['trial' + str(num)] = trials.loc[trials['Session']==num].set_index('Subject')['Trial']
+    return df_sum
+
+#---------------------------------------------------------------#
+
+def get_summary_data(df_raw):
+    df_raw = get_choices(df_raw)
+    df_sum = get_sum_choice_all(df_raw)
+    df_sum = get_latencies(df_raw,df_sum)
+    df_sum = get_omit(df_raw,df_sum)
+    df_sum = get_trials(df_raw,df_sum)
+    df_sum = get_premature(df_raw,df_sum)
+    return df_sum
