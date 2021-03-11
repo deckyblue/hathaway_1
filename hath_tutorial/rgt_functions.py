@@ -220,8 +220,6 @@ def get_risk_status(df_sum, startsess, endsess):
             risky.append(sub) #and append them to the 'risky' list
     return df_sum, risky, optimal
 
-df_summary, risky, optimal = get_risk_status(df_summary, startsess, endsess) 
-
 #---------------------------------------------------------------#
 
 def export_to_excel(df,groups,groupname,filename):
