@@ -23,6 +23,14 @@ pd.options.mode.chained_assignment = None
 
 #---------------------------------------------------------------#
 
+#test 
+def square(num): 
+    return num^2
+
+#---------------------------------------------------------------#
+
+
+
 def load_data(fnames): ##fnames is an argument, and a list of strings (file names) 
     for i,file in enumerate(fnames): ##i means index (0, 1, etc.) // file is the file name (str)
 ##enumerate takes a list, and makes a new list where the elements are index + something (eg 0, 'BH07_raw_free_S29-30.xlsx')
@@ -34,3 +42,10 @@ def load_data(fnames): ##fnames is an argument, and a list of strings (file name
             df = df.append(df2, ignore_index = True) #append it to the first file
     return df
 
+def check_sessions(df): ##checks that the 'Session' column has correct, and non-missing session numbers
+    pd.set_option('display.max_rows', None) ##otherwise it will ... the middle rows (only give the head and tail)
+    print(df.groupby(['Subject','StartDate','Session'])['Trial'].max())
+    pd.set_option('display.max_rows',df.Subject.max()) ##this sets the number of displayed rows to the number of subjects
+    
+    
+    
