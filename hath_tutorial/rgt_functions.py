@@ -232,4 +232,78 @@ def export_to_excel(df,groups,groupname,filename):
     df_export.sort_index(inplace = True) #this sorts the subjects so they're in the right order after combining
     df_export.to_excel(filename, index_label = 'Subject')
     
+#------------------------------PLOTTING---------------------------------#
+   
+def get_group_means_sem(df_sum,groups, group_names):
+    dfs = []
+    #first split the dataframe based on experimental vs control
+    for group in groups:
+        dfs.append(df_sum.loc[group])
+    #create two dataframes - one for the means, one for the SEM
+    mean_scores = pd.DataFrame(columns=list(df_sum.columns))
+    stderror = pd.DataFrame(columns=mean_scores.columns)
+    #calculate the mean and standard errors, and store them in the above dataframes
+    for column in mean_scores.columns:
+        for i in range(len(groups)):
+            mean_scores.at[i,column] = dfs[i][column].mean()
+            stderror.at[i,column] = stats.sem(dfs[i][column])
+    #rename the rows to be the group_names (i.e., transgene positive and transgene negative)   
+    mean_scores.rename(index=group_names,inplace = True)
+    stderror.rename(index=group_names, inplace = True)
+    return mean_scores, stderror
+
+def rgt_plot(variable,startsess,endsess,group_names,title,scores,sem, highlight = None, var_title = None):
+    ##startsess and endsess allow us to clip the session data 
+    if var_title == None:
+        var_title = variable
+    plt.rcParams.update({'font.size': 22})
+    fig,ax = plt.subplots(figsize = (20,10))
+    ax.set_ylabel(var_title)
+    ax.set_xlabel('Session')
+    ax.set_xlim(startsess,endsess)
+    ax.set_title(title + ': ' + var_title + '\n' + 'Session ' + str(startsess) + '-' + str(endsess))
+    ax.spines['right'].set_linewidth(0)
+    ax.spines['top'].set_linewidth(0)
+    ax.spines['left'].set_linewidth(2)
+    ax.spines['bottom'].set_linewidth(2)
+    ax.set_xlim(startsess-.1,endsess+.1)
+    x=np.arange(startsess,endsess+1)
+    ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+   
+    for i,group in enumerate(group_names):
+        y = scores.loc[group,variable+str(startsess):variable+str(endsess)]
+        plt.errorbar(x, y,
+                     yerr = sem.loc[group,variable+str(startsess):variable+str(endsess)], 
+                     label=group,linewidth=4, capsize = 8)
+    if highlight != None:
+        plt.axvline(highlight, 0, 1, color = 'gray', lw = 1)
+        ax.fill_between([highlight,endsess], ax.get_ylim()[0], ax.get_ylim()[1], facecolor='gray', alpha=0.2)
+    ax.legend()
+
+def choice_bar_plot(startsess, endsess, scores, sem,cmap = 'default'):
+    sess = list(range(startsess,endsess + 1))
+    labels = ['P1','P2','P3','P4']
+    df = pd.DataFrame()
+    df1 = pd.DataFrame()
+    if cmap == 'Paired':
+        colors = [plt.cm.Paired(5),plt.cm.Paired(1),plt.cm.Paired(4),plt.cm.Paired(0)]
+    if cmap == 'default':
+        colors = [plt.cm.Set1(1),plt.cm.Set1(0)]
+    for choice in labels:
+        df[choice] = scores.loc[:, [col for col in scores.columns if choice in col 
+                                    and int(col[:col.index('P')]) in sess]].mean(axis = 1)
+        df1[choice] = sem.loc[:, [col for col in scores.columns if choice in col 
+                                    and int(col[:col.index('P')]) in sess]].mean(axis = 1)
+    ax = df.transpose().plot.bar(rot = 0, yerr = df1.transpose(), capsize = 8, figsize = (20,8))
+    
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    plt.rcParams.update({'font.size': 18})
+    ax.set_ylabel('% Choice', fontweight = 'bold', fontsize = 18)
+    ax.set_title('P1-P4 Choice', fontweight = 'bold', fontsize = 22, pad = 20)
+    ax.set_ylim(bottom = 0)
+    ax.spines['right'].set_linewidth(0)
+    ax.spines['top'].set_linewidth(0)
+    ax.spines['left'].set_linewidth(2)
+    ax.spines['bottom'].set_linewidth(2)
+    ax.legend()
     
