@@ -222,12 +222,12 @@ def get_risk_status(df_sum, startsess, endsess):
 
 #---------------------------------------------------------------#
 
-def export_to_excel(df,groups,groupname,filename):
+def export_to_excel(df,groups,column_name = 'group',file_name = 'summary_data'):
     dfs = []
     for group in groups: #this splits the dataframe by group
         dfs.append(df.loc[group])
     for i,df in enumerate(dfs): #this assigns a number to the tg_status column - in this case, 0 for control, 1 for experimental
-        df[groupname] = i ##i should be 0 and 1
+        df[column_name] = i ##i should be 0 and 1
     df_export = pd.concat(dfs) #this recombines the dataframes
     df_export.sort_index(inplace = True) #this sorts the subjects so they're in the right order after combining
     df_export.to_excel(filename, index_label = 'Subject')
