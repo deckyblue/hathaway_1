@@ -230,7 +230,7 @@ def export_to_excel(df,groups,column_name = 'group',file_name = 'summary_data'):
         df[column_name] = i ##i should be 0 and 1
     df_export = pd.concat(dfs) #this recombines the dataframes
     df_export.sort_index(inplace = True) #this sorts the subjects so they're in the right order after combining
-    df_export.to_excel(filename, index_label = 'Subject')
+    df_export.to_excel(file_name, index_label = 'Subject')
     
 #------------------------------PLOTTING---------------------------------#
    
