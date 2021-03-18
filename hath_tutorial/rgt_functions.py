@@ -45,10 +45,13 @@ def check_sessions(df): ##checks that the 'Session' column has correct, and non-
     print(df.groupby(['Subject','StartDate','Session'])['Trial'].max())
     pd.set_option('display.max_rows',df.Subject.max()) ##this sets the number of displayed rows to the number of subjects
     
-def drop_sessions(df, session_num):
-    drop_sess = list(df.loc[df['Session'] == session_num].index)
-    df.drop(drop_sess, inplace = True)
-    df.reset_index(inplace = True)
+def drop_sessions(df, session_nums):
+    'Takes in a list of session numbers, and removes the data from specified session numbers'
+    for s in session_nums:
+        drop_sess = list(df.loc[df['Session'] == s].index)
+        df.drop(drop_sess, inplace = True)
+        df.reset_index(inplace = True)
+    return None ##could replace with check_sessions(df)
     
 #---------------------------------------------------------------#
 
