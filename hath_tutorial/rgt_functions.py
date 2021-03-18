@@ -29,8 +29,6 @@ def square(num):
 
 #---------------------------------------------------------------#
 
-
-
 def load_data(fnames): ##fnames is an argument, and a list of strings (file names) 
     for i,file in enumerate(fnames): ##i means index (0, 1, etc.) // file is the file name (str)
 ##enumerate takes a list, and makes a new list where the elements are index + something (eg 0, 'BH07_raw_free_S29-30.xlsx')
@@ -46,6 +44,11 @@ def check_sessions(df): ##checks that the 'Session' column has correct, and non-
     pd.set_option('display.max_rows', None) ##otherwise it will ... the middle rows (only give the head and tail)
     print(df.groupby(['Subject','StartDate','Session'])['Trial'].max())
     pd.set_option('display.max_rows',df.Subject.max()) ##this sets the number of displayed rows to the number of subjects
+    
+def drop_sessions(df, session_num):
+    drop_sess = list(df.loc[df['Session'] == session_num].index)
+    df.drop(drop_sess, inplace = True)
+    df.reset_index(inplace = True)
     
 #---------------------------------------------------------------#
 
