@@ -136,8 +136,6 @@ def get_choices(df):
             df['option'][i] = 0 
     return df    
 
-#---------------------------------------------------------------#
-
 def get_sum_choice(num, df, mode = 'Session'):
     #get choice information for given group number or session number
     df1 = df.loc[df[mode] == num]
@@ -151,8 +149,6 @@ def get_sum_choice(num, df, mode = 'Session'):
                                                                                 (df.Subject == sub)])) *100
     return percentage
 
-#---------------------------------------------------------------#
-
 def get_sum_choice_all(df, mode = 'Session'):
     df_sess = []
     for num in np.sort(df[mode].unique()):
@@ -161,8 +157,6 @@ def get_sum_choice_all(df, mode = 'Session'):
     for num in np.sort(df[mode].unique()):
         df1['risk'+ str(num)] = df1[str(num)+'P1'] + df1[str(num)+'P2']- df1[str(num)+'P3'] - df1[str(num)+'P4']
     return df1
-
-#---------------------------------------------------------------#
 
 def get_premature(df_raw,df_sum,mode = 'Session'):
     #extract premature response information on either group or session
@@ -176,8 +170,6 @@ def get_premature(df_raw,df_sum,mode = 'Session'):
         df_sum['prem' + str(num)] = prem_resp.loc[prem_resp[mode]==num].set_index('Subject')['prem_percent']
     return df_sum
 
-#---------------------------------------------------------------#
-
 def get_latencies(df_raw,df_sum,mode = 'Session'):
     #extract collect and choice lat information
     df_raw = df_raw.loc[df_raw['Chosen'] != 0]
@@ -188,8 +180,6 @@ def get_latencies(df_raw,df_sum,mode = 'Session'):
     for num in np.sort(df_raw[mode].unique()):
         df_sum['choice_lat' + str(num)] = choice_lat.loc[choice_lat[mode]==num].set_index('Subject')['Choice_Lat']
     return df_sum
-
-#---------------------------------------------------------------#
 
 def get_omit(df_raw,df_sum,mode = 'Session'):
     omit = df_raw.groupby(['Subject',mode],as_index=False)['Omit'].sum()
@@ -210,7 +200,7 @@ def get_trials_init(df_raw,df_sum,mode = 'Session'):
         df_sum['trial_init' + str(num)] = trials.loc[trials[mode]==num].set_index('Subject')['Trial']
     return df_sum
 
-#---------------------------------------------------------------#
+#-------------------------------GET SUMMARY DATA--------------------------------#
 
 def get_summary_data(df_raw, mode = 'Session'):
     df_raw = get_choices(df_raw)
@@ -267,7 +257,7 @@ def export_to_excel(df,groups,column_name = 'group',file_name = 'summary_data'):
     df_export.sort_index(inplace = True) #this sorts the subjects so they're in the right order after combining
     df_export.to_excel(file_name, index_label = 'Subject')
     
-#------------------------------PLOTTING BY SESSION---------------------------------#
+#------------------------------GET EXPERIMENTAL/CONTROL GROUP MEANS---------------------------------#
    
 def get_group_means_sem(df_sum,groups, group_names): ##exact same in ls and data_prep --> but objects are named differently
     dfs = []
@@ -286,6 +276,8 @@ def get_group_means_sem(df_sum,groups, group_names): ##exact same in ls and data
     mean_scores.rename(index=group_names,inplace = True)
     stderror.rename(index=group_names, inplace = True)
     return mean_scores, stderror
+
+#------------------------------PLOTTING BY SESSION---------------------------------#
 
 def rgt_plot(variable,startsess,endsess,group_names,title,scores,sem, highlight = None, var_title = None):
     ##startsess and endsess allow us to clip the session data 
