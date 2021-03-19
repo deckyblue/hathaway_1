@@ -23,21 +23,46 @@ pd.options.mode.chained_assignment = None
 
 #---------------------------------------------------------------#
 
-#test 
-def square(num): 
-    return num^2
-
-#---------------------------------------------------------------#
-
-def load_data(fnames): ##fnames is an argument, and a list of strings (file names) 
-    for i,file in enumerate(fnames): ##i means index (0, 1, etc.) // file is the file name (str)
-##enumerate takes a list, and makes a new list where the elements are index + something (eg 0, 'BH07_raw_free_S29-30.xlsx')
+def load_data(fnames, reset_sessions = False): #when reset_sessions = False --> load_data runs like normal 
+#load data from computer
+    for i,file in enumerate(fnames):
         if i == 0:
-            df = pd.read_excel(fnames[i]) #load in the first file from the 'file_names' list
+            df = pd.read_excel(fnames[i])
+            if reset_sessions:
+                for i,session in enumerate(df.Session.unique()):
+                    for j in range(len(df)):
+                        if df.at[j,'Session'] == session:
+                            df.at[j,'Session'] = i + 1
         else:
-            df2 = pd.read_excel(fnames[i]) #load in subsequent file
-    #i > 0, and fnames[i] refers to the ith element of the list, fnames
-            df = df.append(df2, ignore_index = True) #append it to the first file
+            df2 = pd.read_excel(fnames[i])
+            if reset_sessions:
+                for i,session in enumerate(df2.Session.unique()):
+                    for j in range(len(df2)):
+                        if df2.at[j,'Session'] == session:
+                            df2.at[j,'Session'] = i + 1
+            df = df.append(df2, ignore_index = True)
+    return df
+
+def load_multiple_data(fnames, reset_sessions=False): 
+#load multiple datasets from computer and redo subject numbers
+    for i,file in enumerate(fnames):
+        if i == 0:
+            df = pd.read_excel(fnames[i])
+            df['Subject'] += 100
+            if reset_sessions:
+                for i,session in enumerate(df.Session.unique()):
+                    for j in range(len(df)):
+                        if df.at[j,'Session'] == session:
+                            df.at[j,'Session'] = i + 1
+        else:
+            df2 = pd.read_excel(fnames[i])
+            df2['Subject'] += 100 * (1+i)
+            if reset_sessions:
+                for i,session in enumerate(df2.Session.unique()):
+                    for j in range(len(df2)):
+                        if df2.at[j,'Session'] == session:
+                            df2.at[j,'Session'] = i + 1
+            df = df.append(df2, ignore_index = True)
     return df
 
 def check_sessions(df): ##checks that the 'Session' column has correct, and non-missing session numbers
@@ -65,6 +90,27 @@ def drop_groups(df, group_nums):
         df.drop(drop_group, inplace = True)
         df.reset_index(inplace = True)
     return None ##could replace with check_groups(df)
+
+def remove_subject(df, subs):
+    for sub in subs:
+        df.drop(list(df.loc[df['Subject']==sub].index), inplace=True)
+    df.reset_index(inplace=True)
+    return df
+
+def edit_sess(df, orig_sess, new_sess,subs = 'all'):
+    if subs == 'all':
+        for i,sess in enumerate(orig_sess):
+            for i in range(len(df)):
+                if df.at[i,'Session']== sess:
+                    df.at[i,'Session'] = new_sess[i]
+    else:
+        for sub in subs:
+            index = list(df.loc[df['Subject']==sub].index)
+            for i,sess in enumerate(orig_sess):
+                for idx in index:
+                    if df.at[idx,'Session'] == sess:
+                        df.at[idx,'Session'] = new_sess[i]
+    return df
     
 #------------------------------ANALYZE BY SESSION/GROUP---------------------------------#
 
@@ -209,7 +255,7 @@ def get_risk_status_vehicle(df1):
             risky.append(sub)
     return df1, risky, optimal
 
-#---------------------------------------------------------------#
+#-------------------------------EXPORT TO EXCEL--------------------------------#
 
 def export_to_excel(df,groups,column_name = 'group',file_name = 'summary_data'):
     dfs = []
@@ -221,7 +267,7 @@ def export_to_excel(df,groups,column_name = 'group',file_name = 'summary_data'):
     df_export.sort_index(inplace = True) #this sorts the subjects so they're in the right order after combining
     df_export.to_excel(file_name, index_label = 'Subject')
     
-#------------------------------PLOTTING---------------------------------#
+#------------------------------PLOTTING BY SESSION---------------------------------#
    
 def get_group_means_sem(df_sum,groups, group_names): ##exact same in ls and data_prep --> but objects are named differently
     dfs = []
@@ -296,3 +342,62 @@ def choice_bar_plot(startsess, endsess, scores, sem,cmap = 'default'):
     ax.spines['bottom'].set_linewidth(2)
     ax.legend()
     
+#------------------------------PLOTTING BY GROUPS---------------------------------#
+    
+def ls_bar_plot(figure_group, group_means, sem):
+    labels = ['P1','P2','P3','P4']
+    veh_means =  list(group_means.loc[figure_group,[col for col in group_means.columns if col.startswith('1')]])
+    dose1_means = list(group_means.loc[figure_group,[col for col in group_means.columns if col.startswith('2')]])
+    dose2_means = list(group_means.loc[figure_group,[col for col in group_means.columns if col.startswith('3')]])
+    dose3_means = list(group_means.loc[figure_group,[col for col in group_means.columns if col.startswith('4')]])
+
+    x = np.arange(len(labels))*3  # the label locations
+    width = 0.5  # the width of the bars
+
+    fig, ax = plt.subplots(figsize = (10,5))
+    rects1 = ax.bar(x - width/2-width, veh_means, width, label='Vehicle',
+                    yerr = list(sem.loc[figure_group,[col for col in sem.columns if col.startswith('1')]]), capsize = 8, ecolor='C0')
+    rects2 = ax.bar(x - width/2, dose1_means, width, label='Dose 1', 
+                    yerr =list(sem.loc[figure_group,[col for col in sem.columns if col.startswith('2')]]), capsize = 8, ecolor='C1')
+    rects3 = ax.bar(x + width/2, dose2_means, width, label='Dose 2',
+                    yerr = list(sem.loc[figure_group,[col for col in sem.columns if col.startswith('3')]]),capsize = 8, ecolor='C3',color = 'C3')
+    rects4 = ax.bar(x + width/2+width, dose3_means, width, label='Dose 3',capsize = 8, 
+                    yerr = list(sem.loc[figure_group,[col for col in sem.columns if col.startswith('4')]]), ecolor='C2', color = 'C2')
+
+    # Add some text for labels, title and custom x-axis tick labels, etc.
+    ax.set_ylabel('% Choice', fontweight = 'bold', fontsize = 22)
+    ax.set_title(figure_group + ': P1-P4', fontweight = 'bold', fontsize = 24, pad = 20)
+    ax.set_ylim(bottom = 0,top = 85)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    ax.spines['right'].set_linewidth(0)
+    ax.spines['top'].set_linewidth(0)
+    ax.spines['left'].set_linewidth(2)
+    ax.spines['bottom'].set_linewidth(2)
+    ax.legend()
+    
+def rgt_bar_plot(variable,startsess,endsess,group_names,title,scores,sem, var_title = None):
+    if var_title == None:
+        var_title = variable
+    plt.rcParams.update({'font.size': 20}) 
+    plt.rcParams["figure.figsize"] = (15,8)
+    
+    bars = [0,0,0,0,0]
+    err = [0,0,0,0,0]
+    sess = [variable + str(s) for s in list(range(startsess,endsess+1))]
+    for i,group in enumerate(scores.index):
+        bars[i] = scores.loc[group, [col for col in scores.columns if col in sess]].mean()
+        err[i] = sem.loc[group, [col for col in sem.columns if col in sess]].mean()
+        plt.bar(i, bars[i], yerr = err[i], capsize = 8, width = .7, color = ['C'+str(i)], label = scores.index[i])
+   
+    ax = plt.gca()
+    plt.xticks([])
+    plt.xlabel('Task', labelpad = 20)
+    ax.set_ylabel('% Premature')
+    ax.set_ylim(0,50)
+    ax.set_title(var_title,fontweight = 'bold', fontsize = 22, pad = 20)
+    ax.spines['right'].set_linewidth(0)
+    ax.spines['top'].set_linewidth(0)
+    ax.spines['left'].set_linewidth(2)
+    ax.spines['bottom'].set_linewidth(2)
+    ax.legend()
