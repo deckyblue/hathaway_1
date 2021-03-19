@@ -89,9 +89,9 @@ def drop_groups(df, group_nums):
         drop_group = list(df.loc[df['Group'] == s].index)
         df.drop(drop_group, inplace = True)
         df.reset_index(inplace = True)
-    return None ##could replace with check_groups(df)
+    return None ##could replace with check_groups(df) or df
 
-def remove_subject(df, subs):
+def drop_subjects(df, subs):
     for sub in subs:
         df.drop(list(df.loc[df['Subject']==sub].index), inplace=True)
     df.reset_index(inplace=True)
