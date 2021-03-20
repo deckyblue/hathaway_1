@@ -44,11 +44,11 @@ def load_data(fnames, reset_sessions = False): #when reset_sessions = False --> 
     return df
 
 def load_multiple_data(fnames, reset_sessions=False): 
-#load multiple datasets from computer and redo subject numbers
+#load multiple datasets from computer and redo subject numbers (for multiple cohorts) 
     for i,file in enumerate(fnames):
         if i == 0:
             df = pd.read_excel(fnames[i])
-            df['Subject'] += 100
+            df['Subject'] += 100 #rat 1 becomes rat 101
             if reset_sessions:
                 for i,session in enumerate(df.Session.unique()):
                     for j in range(len(df)):
@@ -56,7 +56,7 @@ def load_multiple_data(fnames, reset_sessions=False):
                             df.at[j,'Session'] = i + 1
         else:
             df2 = pd.read_excel(fnames[i])
-            df2['Subject'] += 100 * (1+i)
+            df2['Subject'] += 100 * (1+i) #rat 1 becomes rat 201, 301, etc. 
             if reset_sessions:
                 for i,session in enumerate(df2.Session.unique()):
                     for j in range(len(df2)):
